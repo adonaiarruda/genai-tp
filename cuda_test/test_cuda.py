@@ -17,7 +17,7 @@ def info():
         print("\n CUDA NÃO disponível — PyTorch vai rodar só na CPU.")
         return False
     print(f"CUDA (compilado):    {torch.version.cuda}")
-    print(f"GPUs encontradas:    {torch.cuda.device_count()}")
+    print(f"GPUs tested:    {torch.cuda.device_count()}")
     print(f"GPU 0:               {torch.cuda.get_device_name(0)}")
     cap = torch.cuda.get_device_capability(0)
     print(f"Compute capability:  {cap[0]}.{cap[1]}")

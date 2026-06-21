@@ -1,0 +1,18 @@
+# Índice extra para os wheels do PyTorch com CUDA 12.9 (GPU NVIDIA).
+# As libs do CUDA já vêm dentro destes wheels — NÃO precisa instalar o CUDA Toolkit.
+# Instale com:  pip install -r requirements.txt
+# Para rodar só na CPU, troque a URL abaixo por: https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cu129
+
+# PyTorch (GPU / CUDA 12.9)
+torch==2.12.1+cu129
+torchvision==0.27.1+cu129
+torchaudio==2.11.0+cu129
+
+# Computação numérica e gráficos (notebook VAE_EMNIST)
+numpy==2.4.4
+matplotlib==3.11.0
+
+# Execução de notebooks Jupyter (IPython.display, kernel)
+ipython==9.14.1
+ipykernel==7.3.0

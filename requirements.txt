@@ -12,7 +12,10 @@ torchaudio==2.11.0+cu129
 # Computação numérica e gráficos (notebook VAE_EMNIST)
 numpy==2.4.4
 matplotlib==3.11.0
+plotly==6.8.0
+kaleido==1.3.0
 
 # Execução de notebooks Jupyter (IPython.display, kernel)
 ipython==9.14.1
 ipykernel==7.3.0
+nbformat==5.10.4

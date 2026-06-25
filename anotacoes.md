@@ -1,1 +1,0 @@
-- fazer lógica de early stopping para verificar estabilidade de treinamento.

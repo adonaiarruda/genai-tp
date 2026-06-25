@@ -1,0 +1,13 @@
+### Rationale for Hyperparameter Tuning
+
+Hyperparameter tuning is a critical step in training a Variational Autoencoder (VAE), particularly when it serves as the foundation for a Latent Diffusion model. The primary objective of this empirical search is not merely to minimize reconstruction error, but to strike a delicate balance between two competing forces: preserving high-fidelity spatial details from the EMNIST dataset and enforcing a well-structured, continuous latent space (approximating a standard normal distribution, $\mathcal{N}(0, I)$). By systematically isolating and testing these specific parameters, we can prevent common failure modes—such as posterior collapse—and ensure the resulting latent space is dense and optimized for the downstream diffusion process.
+
+### Experimental Setup and Technical Impact
+
+| Hyperparameter | Test Values | Technical Impact |
+| :--- | :--- | :--- |
+| **Latent Space Dimension ($m$)** | 8, 16, 32 | Defines the information bottleneck. A smaller $m$ (e.g., 8) forces a highly compressed, continuous latent space that makes the subsequent diffusion model highly efficient, at the cost of blurred reconstructions. A larger $m$ (e.g., 32) yields sharper images but risks creating a sparse latent space that is harder for the diffusion model to map. |
+| **KL Annealing ($\beta$)** | Constant $\beta=1$ vs. Linear schedule (0 to 1 over 15 epochs) | Directly addresses and prevents **posterior collapse**. Starting with $\beta=0$ allows the network to function purely as an autoencoder initially, prioritizing the learning of image features. Gradually increasing $\beta$ to 1 slowly forces the latent space into a Gaussian distribution without "killing" dimensions prematurely. |
+| **Learning Rate (LR)** | 1e-2, 1e-3, 1e-4 | Dictates the optimization stability, especially for the Adam optimizer. An aggressively high LR (1e-3) early on can cause the optimizer to take the path of least resistance (zeroing out the KL divergence and collapsing the latent space). A lower LR stabilizes the loss curves but requires more epochs (and GPU units) to converge. |
+| **Architecture Capacity** | 2 Convolutional Blocks vs. 3 Convolutional Blocks | Determines the capacity to extract spatial hierarchies. Using 3 blocks enables a gradual, hierarchical compression of the image (e.g., $28 \to 14 \to 7 \to 4$) before the flattening operation. This makes the final linear projection to the small latent space $m$ a smoother transition, reducing the risk of abrupt information loss compared to the steeper, larger dimensional jump of a 2-block architecture. |
+

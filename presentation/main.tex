@@ -1,0 +1,286 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Madrid}
+
+% --- Pacotes Recomendados para Overleaf ---
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{hyperref}
+
+% --- Customização de Cores (Tema Escuro/Tecnológico Elegante) ---
+\definecolor{DeepSlate}{RGB}{15, 23, 42}
+\definecolor{TechBlue}{RGB}{14, 165, 233}
+\definecolor{LightGray}{RGB}{241, 245, 249}
+\definecolor{DarkText}{RGB}{33, 37, 41}
+
+\setbeamercolor{palette primary}{bg=DeepSlate,fg=white}
+\setbeamercolor{palette secondary}{bg=TechBlue,fg=white}
+\setbeamercolor{palette tertiary}{bg=DeepSlate,fg=white}
+\setbeamercolor{structure}{fg=TechBlue}
+\setbeamercolor{titlelike}{parent=palette primary}
+\setbeamercolor{background canvas}{bg=white}
+\setbeamercolor{normal text}{fg=DarkText}
+
+% --- Configurações Gerais ---
+\title[Latent Diffusion com EMNIST]{Latent Diffusion com o Dataset EMNIST}
+\subtitle{Implementação de um Pipeline Generativo Bidimensional (VAE + Denoiser)}
+
+\author{%
+  Arthur Jorge - 2022055718 \\
+  Jose Adonai Arruda - 2026685902 \\
+  Lucas Ribeiro \\
+  Wagner
+}
+
+\institute{Ambiente de Desenvolvimento: PyTorch \& Google Colab}
+\date{\today}
+
+% --- REMOVER RODAPÉ E ÍCONES DE NAVEGAÇÃO ---
+\setbeamertemplate{footline}{} 
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+% ==============================================================================
+% SLIDE 1: Capa
+% ==============================================================================
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ==============================================================================
+% SLIDE 2: Agenda
+% ==============================================================================
+\begin{frame}{Agenda}
+    \tableofcontents
+\end{frame}
+
+\section{1. Visão Geral do Projeto}
+% ==============================================================================
+% SLIDE 3: Visão Geral do Pipeline
+% ==============================================================================
+\begin{frame}{Visão Geral do Projeto}
+    O projeto implementa um modelo de \textbf{Latent Diffusion} aplicado ao dataset \textbf{EMNIST}. O pipeline divide-se em duas etapas macro fundamentais:
+    \vspace{0.3cm}
+    \begin{block}{1. Autoencoder Variacional (VAE)}
+        Codifica as imagens originais de alta dimensionalidade para um espaço latente compacto, contínuo e denso ($m=32$), forçando o aprendizado de características estruturais robustas.
+    \end{block}
+    \begin{block}{2. Modelo de Difusão (Latent Diffusion)}
+        Atua diretamente sobre o espaço latente reduzido. Um modelo \textit{Denoiser} aprende a reverter o processo de difusão determinística. O Decoder do VAE mapeia os vetores gerados de volta para o formato visual.
+    \end{block}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 4: O Dataset EMNIST
+% ==============================================================================
+\begin{frame}{O Desafio do Dataset EMNIST}
+    \begin{itemize}
+        \item \textbf{Complexidade Superior:} Ao contrário do MNIST tradicional (apenas 10 dígitos), o EMNIST inclui dígitos e letras maiúsculas e minúsculas (A-Z, a-z, 0-9).
+        \item \textbf{Variabilidade Alta:} Maior diversidade de traços manuais, rotações e distorções morfológicas.
+        \item \textbf{Abordagem Numérica:} Imagens em tons de cinza normalizadas, tratadas como matrizes binárias ou contínuas dependendo do modelo de verossimilhança adotado.
+    \end{itemize}
+    \vspace{0.3cm}
+    \begin{exampleblock}{Ambiente de Execução}
+        Desenvolvido em \textbf{PyTorch} com aceleração por GPU no ambiente \textbf{Google Colab}, permitindo rápida prototipagem e tuning de hiperparâmetros.
+    \end{exampleblock}
+\end{frame}
+
+\section{2. O Autoencoder Variacional (VAE)}
+% ==============================================================================
+% SLIDE 5: Arquitetura do VAE
+% ==============================================================================
+\begin{frame}{Arquitetura do VAE e Seleção de Blocos}
+    Durante a modelagem no \texttt{VAE\_EMNIST\_tunning.ipynb}, testou-se o impacto estrutural da rede convolucional:
+    \vspace{0.2cm}
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \textbf{Configuração A: 2 Blocos Convolucionais}
+            \begin{itemize}
+                \item \texttt{Encoder2} e \texttt{Decoder2}.
+                \item Menor profundidade, extração de features mais superficiais.
+                \item Reconstruções ligeiramente borradas.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \textbf{Configuração B: 3 Blocos Convolucionais (Vencedor)}
+            \begin{itemize}
+                \item \texttt{Encoder3} e \texttt{Decoder3}.
+                \item Compressão hierárquica mais eficiente.
+                \item Mantém alta fidelidade estrutural no gargalo.
+            \end{itemize}
+        \end{column}
+    \end{columns}
+    \vspace{0.4cm}
+    \textbf{Dimensão Latente Ideal ($m=32$):} Provou ser o balanço perfeito entre compressão (gargalo restrito para a difusão) e capacidade de reconstrução da imagem.
+\end{frame}
+
+% ==============================================================================
+% SLIDE 6: Escolha do Modelo de Likelihood
+% ==============================================================================
+\begin{frame}{Escolha do Modelo de Likelihood (Verossimilhança)}
+    A escolha de $\tilde{\rho}_{X|Z}(x, z)$ dita a formulação matemática do termo de reconstrução $R$ (log-verossimilhança negativa):
+    \vspace{0.3cm}
+    \begin{itemize}
+        \item \textbf{Gaussiana (MSE Loss):} Simétrica e derivável em toda parte. Tende a gerar imagens excessivamente borradas devido à penalidade quadrática que suaviza os gradientes.
+        \item \textbf{Bernoulli (BCE Loss) -- Escolhida:} Melhor alinhamento com a natureza binária do EMNIST. Como a perda cresce infinitamente ao errar os extremos ($0$ e $1$), força reconstruções muito mais nítidas nas bordas das letras e dígitos.
+        \item \textbf{Laplace (L1 Loss):} Robusta a outliers e preserva melhor as bordas que o MSE, porém mostra-se inferior ao BCE para o domínio específico do EMNIST.
+    \end{itemize}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 7: Curvas de Custo por Pixel
+% ==============================================================================
+\begin{frame}{Análise Estatística: Curvas de Custo por Pixel}
+    \begin{itemize}
+        \item Comparação do custo de reconstrução em função do valor predito pelo Decoder para um pixel alvo fixo.
+        \item As três curvas divergem agressivamente perto dos extremos ($0$ e $1$), região onde se concentra a vasta maioria dos pixels do EMNIST.
+    \end{itemize}
+    
+    \begin{center}
+        % ------------------------------------------------------------------
+        % IMAGEM: likelihood_cost_curves.png
+        % ------------------------------------------------------------------
+        \includegraphics[width=0.75\textwidth]{likelihood_cost_curves.png}
+        \\ \vspace{0.2cm}
+        \footnotesize \textbf{Figura 1:} Custo de reconstrução vs. predição do decoder para cada função de verossimilhança.
+    \end{center}
+    
+    \vfill
+\end{frame}
+
+% ==============================================================================
+% SLIDE 8: Posterior Collapse e KL Annealing
+% ==============================================================================
+\begin{frame}{O Problema do Posterior Collapse e o KL Annealing}
+    A função de perda do VAE equilibra duas forças opostas: $\text{Loss} = R + \beta L$. Onde $R$ é a reconstrução e $L$ é a divergência KL.
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{Posterior Collapse (Colapso Posterior):} No início do treino, o Decoder ainda é ineficiente. O otimizador escolhe o "atalho preguiçoso": zera o termo KL ($L \to 0$), fazendo o Encoder prever sempre a distribuição padrão $\mathcal{N}(0, I)$ ignorando a imagem de entrada. O espaço latente colapsa em ruído inútil.
+        \item \textbf{A Solução (KL Annealing):} Introduzir o peso dinâmico $\beta$ que cresce gradualmente ao longo das épocas. Permite que a rede aprenda a reconstruir ($R$) primeiro, para só então regularizar o espaço latente ($L$).
+    \end{itemize}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 9: Implementação do KL Annealing
+% ==============================================================================
+\begin{frame}{Cronograma do KL Annealing (Schedule em Degraus)}
+    O projeto adota um schedule em degraus, onde $\beta$ se eleva em $+0.2$ a cada 5 épocas, estabilizando em $1.0$.
+    \vspace{0.3cm}
+    \begin{table}[]
+        \centering
+        \begin{tabular}{lcccccc}
+            \toprule
+            \textbf{Época} & 1--4 & 5--9 & 10--14 & 15--19 & 20--24 & $\ge 25$ \\
+            \midrule
+            $\boldsymbol{\beta}$ & 0.0 & 0.2 & 0.4 & 0.6 & 0.8 & 1.0 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{Avaliação Justa:} A validação/teste utiliza obrigatoriamente $\beta=1.0$ fixo, garantindo comparação idônea entre os experimentos com e sem annealing (Teste A/B).
+        \item \textbf{Resultado:} O modelo com annealing superou a baseline constante ao atingir menor ELBO de teste, mitigando o colapso do latente.
+    \end{itemize}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 10: Resultados de Treinamento (Convergência)
+% ==============================================================================
+\begin{frame}{Resultados de Treinamento: Convergência}
+    \begin{itemize}
+        \item Comprovação empírica da queda estável da \textit{Loss} total (Negativa do ELBO).
+        \item Equilíbrio entre o erro de reconstrução e a regularização após o \textit{Annealing}.
+    \end{itemize}
+    
+    \begin{center}
+        % ------------------------------------------------------------------
+        % IMAGEM: vae_loss_curve.png
+        % ------------------------------------------------------------------
+        \includegraphics[width=0.75\textwidth]{vae_loss_curve.png}
+        \\ \vspace{0.2cm}
+        \footnotesize \textbf{Figura 2:} Curva de Perda do VAE monitorando treino e teste.
+    \end{center}
+    
+    \vfill
+\end{frame}
+
+% ==============================================================================
+% SLIDE 11: Resultados de Treinamento (Espaço Latente)
+% ==============================================================================
+\begin{frame}{Resultados de Treinamento: Organização Latente}
+    \begin{itemize}
+        \item Visualização das marginais 2D para as dimensões do espaço latente ($z \in \mathbb{R}^{32}$).
+        \item Organização topológica densa e contínua, essencial para o estágio de difusão.
+    \end{itemize}
+
+    \begin{center}
+        % ------------------------------------------------------------------
+        % IMAGEM: latent_marginals.png
+        % ------------------------------------------------------------------
+        \includegraphics[width=0.85\textwidth]{latent_marginals.png}
+        \\ \vspace{0.2cm}
+        \footnotesize \textbf{Figura 3:} Marginais do espaço latente evidenciando aderência à normal $\mathcal{N}(0, I)$.
+    \end{center}
+
+    \vfill
+\end{frame}
+
+\section{3. Modelo de Difusão Latente}
+% ==============================================================================
+% SLIDE 12: Arquitetura LatentDenoiser
+% ==============================================================================
+\begin{frame}{Modelo de Difusão: O LatentDenoiser}
+    Uma vez congelado o VAE ideal, o modelo de difusão é treinado exclusivamente operando no espaço latente de dimensionalidade reduzida ($m=32$).
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{Objetivo do Denoiser:} Receber um vetor latente ruidoso $z_t$ e o indicador de tempo $t$, prevendo o ruído adicionado naquele passo para permitir a reversão determinística.
+        \item \textbf{Hiperparâmetros de Treinamento:}
+        \begin{itemize}
+            \item \textbf{Batch Size:} 64
+            \item \textbf{Learning Rate (LR):} 0.0001
+            \item \textbf{Função de Perda:} Erro Quadrático Médio (\texttt{MSELoss}) sobre os ruídos previstos vs. reais.
+            \item \textbf{Duração:} Treinado por 10 épocas, apresentando queda contínua e suave na curva de perda.
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 13: Pipeline de Geração Completo
+% ==============================================================================
+\begin{frame}{Pipeline de Geração Completo}
+    O fluxo final para conceber uma nova imagem sintética do EMNIST segue o algoritmo:
+    \vspace{0.4cm}
+    \begin{block}{Pipeline de Inferência Generativa}
+        \centering
+        Amostra de Ruído Puro $\mathcal{N}(0, I)$ \\
+        $\Downarrow$ \\
+        Processo Iterativo de \textbf{Denoising} (via \texttt{LatentDenoiser}) no Espaço Latente \\
+        $\Downarrow$ \\
+        Obtenção do Vetor Latente Limpo e Organizado $z_0 \in \mathbb{R}^{32}$ \\
+        $\Downarrow$ \\
+        Mapeamento Espacial pelo \textbf{VAE Decoder} \\
+        $\Downarrow$ \\
+        \textbf{Imagem Gerada Final} (Letra ou Dígito nítido no formato EMNIST)
+    \end{block}
+\end{frame}
+
+\section{4. Conclusões}
+% ==============================================================================
+% SLIDE 14: Conclusões e Aprendizados
+% ==============================================================================
+\begin{frame}{Conclusões e Aprendizados}
+    O desenvolvimento do projeto propiciou importantes constatações práticas no campo de IA Generativa:
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{A importância do Acoplamento VAE-Difusão:} Modelos de difusão dependem crucialmente de que o espaço latente gerado pelo VAE seja contínuo e bem mapeado segundo a priori normal. O sucesso do \textbf{KL Annealing} foi o elo que viabilizou essa propriedade.
+        \item \textbf{Sensibilidade à Likelihood:} Mudar de Gaussiana para Bernoulli alterou radicalmente a nitidez visual das amostras geradas, eliminando o efeito borrado crônico de VAEs básicas.
+        \item \textbf{Eficiência Computacional:} Executar a difusão em $\mathbb{R}^{32}$ em vez de operar no espaço de pixels original economizou memória e reduziu o tempo de treino por época de forma drástica, validando a arquitetura de \textit{Latent Diffusion}.
+    \end{itemize}
+\end{frame}
+
+\end{document}

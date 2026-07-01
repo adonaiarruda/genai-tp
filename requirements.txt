@@ -19,3 +19,6 @@ kaleido==1.3.0
 ipython==9.14.1
 ipykernel==7.3.0
 nbformat==5.10.4
+
+# Para monitoramento de progresso (tqdm)
+tqdm==4.66.1

@@ -46,6 +46,7 @@
 - no slide de scheduler 
     - "testamos os schedulers linear e cosseno" 
         - resultado explicar quando ficar pronto
+        - usamos o linear
 
 - colocar a equação do sampler no slide 12
     - OK

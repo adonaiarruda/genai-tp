@@ -22,12 +22,12 @@ The deliverables are:
         - Training details (learning rate, epochs, batch size);
         - The chosen likelihood model ( f_{X|Z}(x,z) ) (Gaussian, Bernoulli, Laplace, etc.);
         - Generation and reconstruction examples;
-        - Snapshots of 2D marginals of the latent space to illustrate the quality of the learned representation.
-        - Plots of the training error as a function of the number of steps.
+        - Snapshots of 2D marginals of the latent space to illustrate the quality of the learned representation. 
+        - Plots of the training error as a function of the number of steps. OK
     - In the Diffusion/Flow model:
         - The chosen architecture;
-        - Training details learning rate, epochs, batch size;
-        - The chosen scheduler;
-        - The chosen sampler.
-        - Plots of the training error as a function of the number of steps.
-        - Snapshots of the Generation
+        - Training details learning rate, epochs, batch size; 
+        - The chosen scheduler; OK
+        - The chosen sampler. OK
+        - Plots of the training error as a function of the number of steps. OK
+        - Snapshots of the Generation ok

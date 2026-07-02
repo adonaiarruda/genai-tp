@@ -51,4 +51,10 @@
     - OK
 
 
+- imagens para colocar (em results):
+    - generated_samples_per_class
+    - diffusion_generation_process
+    - diffusion_samples
+
+
 - explicar brevemente o que é a difusão latente condicionada
